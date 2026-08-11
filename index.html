@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Efectividad Mecánicos</title>
+<style>
+  :root {
+    --bg: #f3f3f3;
+    --panel: #ffffff;
+    --border: #e1e1e1;
+    --header: #252423;
+    --header-text: #ffffff;
+    --alt: #f7f7f7;
+    --total-bg: #252423;
+    --total-text: #ffffff;
+    --link: #1a73e8;
+    --warn: #d93025;
+    --ok: #137333;
+    --accent: #1a73e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: #252423;
+  }
+  header {
+    background: #fff;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 4px 0; font-size: 20px; font-weight: 600; }
+  header p { margin: 0; color: #5f6368; font-size: 13px; }
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    padding: 16px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  @media (max-width: 1100px) {
+    .filters { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 700px) {
+    .filters { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ---- Multi-select ---- */
+  .ms-wrap { position: relative; }
+  .ms-wrap label {
+    display: block;
+    font-size: 12px;
+    color: #5f6368;
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .ms-btn {
+    width: 100%;
+    padding: 6px 28px 6px 8px;
+    border: 1px solid #dadce0;
+    border-radius: 2px;
+    font-size: 13px;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ms-btn::after {
+    content: '▾';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #5f6368;
+    font-size: 11px;
+    pointer-events: none;
+  }
+  .ms-btn.open { border-color: var(--accent); border-bottom-color: #dadce0; }
+  .ms-drop {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid var(--accent);
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  }
+  .ms-drop.open { display: block; }
+  .ms-drop .ms-actions {
+    display: flex;
+    gap: 8px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e1e1e1;
+    background: #fafafa;
+  }
+  .ms-drop .ms-actions button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .ms-drop .ms-actions button:hover { text-decoration: underline; }
+  .ms-drop .ms-search {
+    width: 100%;
+    padding: 5px 8px;
+    border: none;
+    border-bottom: 1px solid #e1e1e1;
+    font-size: 12px;
+    outline: none;
+  }
+  .ms-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .ms-opt:hover { background: #eef4fd; }
+  .ms-opt input { margin: 0; cursor: pointer; }
+  .ms-tag {
+    display: inline-block;
+    background: #e8f0fe;
+    color: var(--accent);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    margin-right: 3px;
+    white-space: nowrap;
+  }
+
+  /* ---- Toolbar ---- */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar .right { display: flex; gap: 12px; align-items: center; }
+  .toolbar button {
+    padding: 6px 12px;
+    border: 1px solid #dadce0;
+    background: #fff;
+    border-radius: 2px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .toolbar button:hover { background: #f1f3f4; }
+  .status { font-size: 12px; color: #5f6368; }
+
+  /* ---- Table ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--header);
+    color: var(--header-text);
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    border-right: 1px solid #3c3c3c;
+    position: sticky;
+    top: 0;
+  }
+  thead th:last-child { border-right: none; }
+  tbody td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  tbody td:last-child { border-right: none; }
+  tbody tr:nth-child(even) { background: var(--alt); }
+  tbody tr:hover { background: #eef4fd; }
+  tbody tr.total {
+    background: var(--total-bg) !important;
+    color: var(--total-text);
+    font-weight: 700;
+  }
+  tbody tr.total td { border-color: #3c3c3c; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .center { text-align: center; }
+  .icon-x { color: var(--warn); font-weight: 700; }
+  .icon-v { color: var(--ok); font-weight: 700; }
+
+  .container {
+    max-width: 1500px;
+    margin: 16px auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .legend {
+    padding: 12px 24px;
+    background: #fff;
+    font-size: 12px;
+    color: #5f6368;
+    border-top: 1px solid var(--border);
+  }
+  details { margin-top: 16px; font-size: 12px; }
+  details summary { cursor: pointer; color: var(--link); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Efectividad de Mecánicos</h1>
+  <p>Tablero de control por Empleado / Mes / Año con filtros de Tipo de orden y Tareas menores a 1 minuto.</p>
+</header>
+
+<section class="filters" id="filters-section"></section>
+
+<div class="toolbar">
+  <div class="status" id="status">Cargando datos...</div>
+  <div class="right">
+    <button id="btn-reset">Limpiar filtros</button>
+    <button id="btn-csv">Exportar CSV</button>
+  </div>
+</div>
+
+<div class="container">
+  <table id="grid">
+    <thead>
+      <tr>
+        <th>Empleado</th>
+        <th class="num">Codigo empleado</th>
+        <th class="num">Hs Totales</th>
+        <th class="num">Hs Mecanico</th>
+        <th class="num">Horas Total Mes</th>
+        <th class="num">% Horas Mes</th>
+        <th class="num">Margen Productividad</th>
+        <th class="num">% Productivo</th>
+        <th class="center">Supera las 80Hs</th>
+        <th class="center">Supera %50 Optim.</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="legend">
+    <strong>Cómo se calcula (réplica del Power BI):</strong>
+    Hs Totales = SUMMARIZE con MAX(Std) / COUNT(Emp en misma tarea) → SUMX.
+    Hs Mecanico = SUM(Horas Trabajadas) / 60.
+    % Horas Mes = Hs Mecanico / 156.
+    Margen Productividad = DIVIDE(SUM(Std) WHERE dif≥0, SUM(Trab) WHERE dif≥0) − 1.
+    % Procutivo = COUNT(fila dif≥0) / COUNT(total) × 100.
+    Supera las 80Hs = IF(Hs Totales ≥ 80, "SI", "NO").
+    Supera %50 Optim. = IF(% Procutivo ≥ 50, "SI", "NO").
+  </div>
+</div>
+
+<script>
+const HORAS_MES = 156;
+let TAREAS = [];
+let ORDENES = {};
+let METRICAS = {};
+let FILTERS = {};          // { id: Set of selected values }
+let DROP_OPEN = null;       // currently open dropdown id
+
+async function loadData() {
+  const [t, o, m] = await Promise.all([
+    fetch('data/tareas.json').then(r => r.json()),
+    fetch('data/ordenes.json').then(r => r.json()),
+    fetch('data/metricas.json').then(r => r.json()),
+  ]);
+  TAREAS = t; ORDENES = o; METRICAS = m;
+}
+
+const $ = id => document.getElementById(id);
+function uniqueSorted(arr) { return Array.from(new Set(arr)).sort(); }
+
+/* ============================================================
+   Multi-select dropdown builder
+   ============================================================ */
+function buildMultiSelect(containerId, label, options, onSelect) {
+  // options: [{ value, label }]
+  // onSelect: callback(values: Set<string>)
+  const wrap = document.createElement('div');
+  wrap.className = 'ms-wrap';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = label;
+  wrap.appendChild(lbl);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'ms-btn';
+  btn.textContent = 'Todos';
+  wrap.appendChild(btn);
+
+  const drop = document.createElement('div');
+  drop.className = 'ms-drop';
+
+  // Search
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.placeholder = 'Buscar...';
+  search.className = 'ms-search';
+  drop.appendChild(search);
+
+  // Actions: Select all / None
+  const actions = document.createElement('div');
+  actions.className = 'ms-actions';
+  const btnAll = document.createElement('button');
+  btnAll.textContent = 'Todos';
+  btnAll.onclick = e => { e.stopPropagation(); setAll(true); };
+  const btnNone = document.createElement('button');
+  btnNone.textContent = 'Ninguno';
+  btnNone.onclick = e => { e.stopPropagation(); setAll(false); };
+  actions.appendChild(btnAll);
+  actions.appendChild(document.createTextNode(' | '));
+  actions.appendChild(btnNone);
+  drop.appendChild(actions);
+
+  // Options
+  const optEls = [];
+  for (const opt of options) {
+    const row = document.createElement('label');
+    row.className = 'ms-opt';
+    row.dataset.val = opt.value;
+    row.dataset.lbl = opt.label.toLowerCase();
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = opt.value;
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(opt.label));
+    drop.appendChild(row);
+    optEls.push({ cb, row });
+
+    cb.addEventListener('change', () => sync());
+  }
+
+  // Search filter
+  search.addEventListener('input', () => {
+    const q = search.value.toLowerCase();
+    for (const o of optEls) {
+      o.row.style.display = o.row.dataset.lbl.includes(q) ? '' : 'none';
+    }
+  });
+
+  function setAll(checked) {
+    for (const o of optEls) {
+      if (o.row.style.display !== 'none') o.cb.checked = checked;
+    }
+    sync();
+  }
+
+  function sync() {
+    const sel = new Set(optEls.filter(o => o.cb.checked).map(o => o.cb.value));
+    FILTERS[containerId] = sel;
+    // Update button text
+    if (sel.size === 0) {
+      btn.textContent = 'Todos';
+      btn.classList.remove('active-filter');
+    } else if (sel.size <= 2) {
+      const names = optEls.filter(o => o.cb.checked).map(o => o.cb.value);
+      btn.innerHTML = sel.size + ' seleccionado(s)';
+      btn.classList.add('active-filter');
+    } else {
+      btn.innerHTML = sel.size + ' seleccionado(s)';
+      btn.classList.add('active-filter');
+    }
+    onSelect(sel);
+  }
+
+  // Toggle
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    closeAllDropdowns();
+    const isOpen = drop.classList.contains('open');
+    drop.classList.toggle('open');
+    btn.classList.toggle('open');
+    if (!isOpen) { DROP_OPEN = containerId; search.focus(); }
+    else { DROP_OPEN = null; }
+  });
+
+  wrap.appendChild(drop);
+  $(containerId).replaceWith(wrap);
+  wrap.id = containerId;
+
+  return { sync, setAll: () => setAll(true), clearAll: () => setAll(false), getSelected: () => new Set(optEls.filter(o => o.cb.checked).map(o => o.cb.value)) };
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.ms-drop.open').forEach(d => d.classList.remove('open'));
+  document.querySelectorAll('.ms-btn.open').forEach(b => b.classList.remove('open'));
+  DROP_OPEN = null;
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ms-wrap')) closeAllDropdowns();
+});
+
+/* ============================================================
+   Populate filters
+   ============================================================ */
+const filterDefs = [
+  { id: 'f-empleado', label: 'Empleado', build: () => {
+    const emps = uniqueSorted(TAREAS.map(t => t.empleadoCodigo + '|' + (t.empleadoNombre || '')));
+    return emps.map(v => { const [c,n] = v.split('|'); return { value: c, label: c + ' - ' + n }; });
+  }},
+  { id: 'f-mes', label: 'Mes', build: () => {
+    const meses = uniqueSorted(TAREAS.map(t => t.fecha.slice(0,7)));
+    return meses.map(m => { const [y,mo] = m.split('-'); return { value: m, label: new Date(y,parseInt(mo)-1,1).toLocaleString('es',{month:'long'}) + ' ' + y }; });
+  }},
+  { id: 'f-anio', label: 'Año', build: () => {
+    const anios = uniqueSorted(TAREAS.map(t => t.fecha.slice(0,4)));
+    return anios.map(a => ({ value: a, label: a }));
+  }},
+  { id: 'f-tipo', label: 'Tipo de orden', build: () => {
+    const tipos = uniqueSorted(Object.values(ORDENES).filter(Boolean));
+    return tipos.map(t => ({ value: t, label: t }));
+  }},
+  { id: 'f-menor', label: 'Tareas Menor a 1 (min)', build: () => [
+    { value: 'si', label: 'Sí (menor a 1 min)' },
+    { value: 'no', label: 'No (1 min o más)' },
+  ]},
+];
+
+function populateFilters() {
+  const section = $('filters-section');
+  section.innerHTML = '';
+  for (const def of filterDefs) {
+    const placeholder = document.createElement('div');
+    placeholder.id = def.id;
+    section.appendChild(placeholder);
+    const opts = def.build();
+    buildMultiSelect(def.id, def.label, opts, () => render());
+  }
+}
+
+/* ============================================================
+   Filter + Aggregate + Render
+   ============================================================ */
+function applyFilters() {
+  const f = {};
+  for (const def of filterDefs) {
+    f[def.id] = FILTERS[def.id] || new Set();
+  }
+  return TAREAS.filter(r => {
+    if (f['f-empleado'].size && !f['f-empleado'].has(r.empleadoCodigo)) return false;
+    if (f['f-mes'].size && !f['f-mes'].has(r.fecha.slice(0,7))) return false;
+    if (f['f-anio'].size && !f['f-anio'].has(r.fecha.slice(0,4))) return false;
+    if (f['f-tipo'].size) {
+      const tipo = ORDENES[String(r.docNum)] || '';
+      if (!f['f-tipo'].has(tipo)) return false;
+    }
+    if (f['f-menor'].has('si') && !(r.tiempoEstandarMin < 1)) return false;
+    if (f['f-menor'].has('no') && !(r.tiempoEstandarMin >= 1)) return false;
+    return true;
+  });
+}
+
+function aggregate(rows) {
+  const map = new Map();
+  for (const r of rows) {
+    const k = r.empleadoCodigo;
+    if (!map.has(k)) map.set(k, { codigo: k, nombre: r.empleadoNombre, ymSet: new Set() });
+    map.get(k).ymSet.add(r.fecha.slice(0,7));
+  }
+  const out = [];
+  for (const a of map.values()) {
+    let hsMec = 0, hsTot = 0, margen = 0, pctProd = 0;
+    let supera80 = 'NO', supera50 = 'NO';
+    for (const ym of a.ymSet) {
+      const m = METRICAS[ym]?.[a.codigo];
+      if (m) {
+        hsMec += m.hsMec; hsTot += m.hsTot; margen += m.margen; pctProd += m.pctProd;
+        if (m.supera80 === 'SI') supera80 = 'SI';
+        if (m.supera50 === 'SI') supera50 = 'SI';
+      }
+    }
+    out.push({ ...a, ym: [...a.ymSet].sort().join(','), hsTot, hsMec, horasMes: HORAS_MES,
+      pctHoras: hsMec/HORAS_MES*100, margen, pctProd, supera80, supera50 });
+  }
+  return out.sort((x,y) => (x.nombre||'').localeCompare(y.nombre||''));
+}
+
+function fmtNum(n, d=2) { return n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtPct(n, d=2) { return fmtNum(n,d) + ' %'; }
+
+function render() {
+  const rows = aggregate(applyFilters());
+  const tbody = $('tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:#5f6368">Sin datos para los filtros seleccionados.</td></tr>';
+    $('status').textContent = '0 empleados';
+    return;
+  }
+  // Totals
+  const ymSet = new Set();
+  for (const r of rows) ymSet.add(r.ym);
+  let hsMecT=0, hsTotT=0, margenT=0, pctProdT=0, sup80T='NO', sup50T='NO';
+  for (const ym of ymSet) {
+    const t = METRICAS[ym]?.__total__;
+    if (t) {
+      hsMecT+=t.hsMec; hsTotT+=t.hsTot; margenT+=t.margen; pctProdT+=t.pctProd;
+      if (t.supera80==='SI') sup80T='SI';
+      if (t.supera50==='SI') sup50T='SI';
+    }
+  }
+
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td>${r.nombre||''}</td>
+    <td class="num">${r.codigo}</td>
+    <td class="num">${fmtNum(r.hsTot)}</td>
+    <td class="num">${fmtNum(r.hsMec)}</td>
+    <td class="num">${r.horasMes}</td>
+    <td class="num">${fmtPct(r.pctHoras)}</td>
+    <td class="num">${fmtPct(r.margen)}</td>
+    <td class="num">${fmtPct(r.pctProd)}</td>
+    <td class="center"><span class="${r.supera80==='NO'?'icon-x':'icon-v'}">${r.supera80==='NO'?'✕':'✓'}</span> ${r.supera80}</td>
+    <td class="center"><span class="${r.supera50==='NO'?'icon-x':'icon-v'}">${r.supera50==='NO'?'✕':'✓'}</span> ${r.supera50}</td>
+  </tr>`).join('') + `<tr class="total">
+    <td>Total</td><td class="num"></td>
+    <td class="num">${fmtNum(hsTotT)}</td>
+    <td class="num">${fmtNum(hsMecT)}</td>
+    <td class="num"></td>
+    <td class="num">${fmtPct(hsMecT/HORAS_MES*100)}</td>
+    <td class="num">${fmtPct(margenT)}</td>
+    <td class="num">${fmtPct(pctProdT)}</td>
+    <td class="center">${sup80T==='SI'?'✓ SI':'NO'}</td>
+    <td class="center">${sup50T==='SI'?'✓ SI':'NO'}</td>
+  </tr>`;
+  $('status').textContent = `${rows.length} empleado(s) · ${applyFilters().length.toLocaleString('es-AR')} tareas`;
+}
+
+/* ---------- Reset & CSV ---------- */
+$('btn-reset').addEventListener('click', () => {
+  document.querySelectorAll('.ms-opt input[type=checkbox]').forEach(cb => cb.checked = false);
+  for (const id of Object.keys(FILTERS)) FILTERS[id] = new Set();
+  document.querySelectorAll('.ms-btn').forEach(b => { b.textContent = 'Todos'; b.classList.remove('active-filter'); });
+  render();
+});
+
+$('btn-csv').addEventListener('click', () => {
+  const rows = aggregate(applyFilters());
+  const head = ['Empleado','Codigo','Hs Totales','Hs Mecanico','Horas Mes','% Horas Mes','Margen Productividad','% Productivo','Supera 80Hs','Supera 50%'];
+  const csv = [head.join(';')].concat(rows.map(r => [
+    r.nombre,r.codigo,r.hsTot.toFixed(2),r.hsMec.toFixed(2),r.horasMes,
+    r.pctHoras.toFixed(2),r.margen.toFixed(2),r.pctProd.toFixed(2),r.supera80,r.supera50,
+  ].join(';'))).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = 'efectividad_mecanicos.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+/* ---------- Boot ---------- */
+loadData().then(() => {
+  populateFilters();
+  // Preselect Aug 2026 + Year 2026
+  const mesEl = FILTERS['f-mes'];
+  const anioEl = FILTERS['f-anio'];
+  if (!mesEl || mesEl.size === 0) {
+    FILTERS['f-mes'] = new Set(['2026-08']);
+    FILTERS['f-anio'] = new Set(['2026']);
+    // Update the button text
+    const msMes = document.getElementById('f-mes');
+    const msAnio = document.getElementById('f-anio');
+    if (msMes) { msMes.querySelector('.ms-btn').textContent = '1 seleccionado(s)'; msMes.querySelectorAll('.ms-opt input').forEach(cb => { if (cb.value==='2026-08') cb.checked = true; }); }
+    if (msAnio) { msAnio.querySelector('.ms-btn').textContent = '1 seleccionado(s)'; msAnio.querySelectorAll('.ms-opt input').forEach(cb => { if (cb.value==='2026') cb.checked = true; }); }
+  }
+  render();
+});
+</script>
+</body>
+</html>
