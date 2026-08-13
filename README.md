@@ -1,72 +1,70 @@
 # Efectividad Mecanicos
 
 Dashboard web que replica el tablero de Power BI "Eficiencia Operativa".
-El servidor Python lee los Exceles directamente, calcula las metricas (replicando
-las formulas DAX), y la web las consume de un endpoint JSON.
+Los Exceles fuente se commitean al repo. Una GitHub Action los procesa y
+genera JSONs. Vercel sirve la UI + los JSONs como sitio estatico.
 
 ## Estructura
 
 ```
 Efectividad Mecanicos/
++- .github/workflows/build.yml   <- Regenera app/data/ cuando se suben Excels
++- vercel.json                   <- Config de deploy (output: app/)
 +- app/
    +- excel/
-   |  +- efectividad.xlsx      <- Reemplazar cuando se actualice el Excel
-   |  +- ordenes.xlsx          <- Reemplazar cuando se actualice el Excel
-   +- index.html               <- UI (filtros, tabla, export CSV)
-   +- serve.py                 <- Servidor HTTP dinamico (LAN, puerto 8765)
+   |  +- efectividad.xlsx        <- Fuente: pegar aca la version actualizada
+   |  +- ordenes.xlsx            <- Fuente: pegar aca la version actualizada
+   +- data/
+   |  +- tareas.json             <- Generado, NO editar a mano
+   |  +- ordenes.json            <- Generado, NO editar a mano
+   |  +- metricas.json           <- Generado, NO editar a mano
+   +- build_data.py              <- Script que lee excels y genera JSONs
+   +- index.html                 <- UI (filtros, tabla, export CSV)
    +- README.md
 ```
 
-## Como se ejecuta
+## Flujo de actualizacion de datos
 
-1. Requisitos: Python 3.8+, `openpyxl`.
+1. Reemplazar `app/excel/efectividad.xlsx` y/o `app/excel/ordenes.xlsx` con la
+   version nueva (mismos nombres).
+2. Hacer commit + push a `main`.
+3. La GitHub Action `.github/workflows/build.yml` corre automaticamente:
+   - `python app/build_data.py` (lee los Exceles y genera los 3 JSONs).
+   - Commit + push de `app/data/` de vuelta al repo.
+4. Vercel detecta el push y redespliega (< 30 s).
+5. La web ya muestra los datos nuevos.
 
-   ```
-   pip install openpyxl
-   ```
+Si queres, podes disparar la Action manualmente desde la pestana *Actions* del
+repo de GitHub con `workflow_dispatch`. No requiere secrets.
 
-2. Asegurarse de que los Exceles actualizados esten en `app/excel/`.
+## Como correrlo en local (sin Vercel)
 
-3. Arrancar el servidor:
+Para desarrollo local rapido:
 
-   ```
-   cd "Efectividad Mecanicos"
-   python app/serve.py
-   ```
+```
+pip install openpyxl
+python app/build_data.py            # genera app/data/*.json
+python -m http.server -d app 8000   # sirve app/ en localhost:8000
+```
 
-   Por defecto escucha en `0.0.0.0:8765`. Se puede cambiar el puerto:
+Abrir `http://localhost:8000`.
 
-   ```
-   python app/serve.py 9000
-   ```
+## Como deployar en Vercel
 
-4. Abrir en el navegador:
+1. Importar el repo en https://vercel.com/new. Sin settings extra:
+   - Framework preset: **Other**
+   - Output Directory: ya viene de `vercel.json` (`app`).
+2. Cada push a `main` redespliega.
+3. El `vercel.json` ya configura `cleanUrls` y cache de 5 min para `/data/*`.
 
-   - Misma PC: `http://localhost:8765`
-   - Otra PC en la LAN: `http://<IP-de-esta-PC>:8765`
+## Endpoint del sitio
 
-5. Para detener: `Ctrl+C` en la terminal donde corre el servidor.
-
-## Como se actualizan los datos
-
-- **Sin reiniciar el servidor**: simplemente reemplazar `app/excel/efectividad.xlsx`
-  y/o `app/excel/ordenes.xlsx` mientras el servidor esta corriendo. La proxima
-  peticion al endpoint `/api/data` detectara el cambio por `mtime` y recalculara
-  las metricas.
-
-- En la web, presionar **F5** o el boton *Recargar* del navegador para ver
-  las metricas nuevas.
-
-- La primera peticion despues de un cambio tarda ~3s (lee los Exceles). Las
-  siguientes son instantaneas (cache en memoria por mtime).
-
-## Endpoint interno
-
-| URL              | Descripcion                                       |
-|------------------|---------------------------------------------------|
-| `GET /`          | UI principal (`index.html`)                       |
-| `GET /api/data`  | JSON con `{tareas, ordenes, metricas}` calculados  |
-| `GET /<archivo>` | Otros assets estaticos (css/js/img, si los hay)   |
+| URL              | Descripcion                                          |
+|------------------|------------------------------------------------------|
+| `GET /`          | UI principal (`index.html`)                          |
+| `GET /data/tareas.json`   | Filas de tareas (regenerado por CI)           |
+| `GET /data/ordenes.json`  | Mapa DocNum -> Tipo de orden                  |
+| `GET /data/metricas.json` | Metricas DAX replicadas, con key `__total__`  |
 
 ## Calculo (replica DAX)
 
@@ -80,17 +78,16 @@ Efectividad Mecanicos/
 | Supera las 80Hs          | `IF(HsTot >= 80, "SI", "NO")`                                                                        |
 | Supera %50 Optim.        | `IF(%Procutivo >= 50, "SI", "NO")`                                                                   |
 
-Todas las formulas son replicas directas de las DAX del modelo PBI y fueron
-validadas contra el tablero original para el periodo 2026-01 .. 2026-08.
+Las formulas replican las DAX del modelo PBI y fueron validadas contra el
+tablero original.
 
-## Filtros disponibles
+## Filtros disponibles (multi-select)
 
-- **Empleado**: multi-select con busqueda
-- **Mes**, **Anio**: multi-select
-- **Tipo de orden**: multi-select (cruzado por DocNum con el Excel de Ordenes)
-- **Tareas menor a 1 min**: filtra filas con tiempo estandar menor a 1 minuto
+- Empleado (con busqueda)
+- Mes y Anio
+- Tipo de orden (cruzado via DocNum con `ordenes.xlsx`)
+- Tareas con tiempo estandar menor a 1 minuto
 
 ## Exportar
 
-El boton **Exportar CSV** descarga los datos filtrados en formato `.csv` separado
-por `;`.
+El boton **Exportar CSV** descarga las filas filtradas, separadas por `;`.

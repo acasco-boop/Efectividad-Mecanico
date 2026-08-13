@@ -277,16 +277,17 @@ let FILTERS = {};          // { id: Set of selected values }
 let DROP_OPEN = null;       // currently open dropdown id
 
 async function loadData() {
-  const r = await fetch('api/data', { cache: 'no-store' });
-  if (!r.ok) { throw new Error('No se pudo cargar /api/data (HTTP ' + r.status + ')'); }
-  const data = await r.json();
-  TAREAS = data.tareas; ORDENES = data.ordenes; METRICAS = data.metricas;
-  return data;
+  const [t, o, m] = await Promise.all([
+    fetch('data/tareas.json').then(r => { if (!r.ok) throw new Error('tareas.json ' + r.status); return r.json(); }),
+    fetch('data/ordenes.json').then(r => { if (!r.ok) throw new Error('ordenes.json ' + r.status); return r.json(); }),
+    fetch('data/metricas.json').then(r => { if (!r.ok) throw new Error('metricas.json ' + r.status); return r.json(); }),
+  ]);
+  TAREAS = t; ORDENES = o; METRICAS = m;
+  return { tareas: t, ordenes: o, metricas: m };
 }
 
 function showReloadInfo(data) {
-  const msg = 'Datos del Excel cargados (auto-actualiza al modificar el archivo).';
-  console.log(msg, data);
+  console.log('Datos cargados desde JSONs pre-calculados (regenerados por GitHub Action al actualizar el Excel).', data);
 }
 
 const $ = id => document.getElementById(id);
